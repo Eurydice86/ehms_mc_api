@@ -1,19 +1,23 @@
 import requests
 import json
+import headers
 
 
-def main():
-
+def get_group_ids():
     base_url = "https://ehms.myclub.fi/api/"
-    headers = {"X-myClub-token": "bb8049d99d974aa7793db6be20442d6d"}
-
     full_url = base_url + "groups"
-
-    response = requests.get(full_url, headers=headers)
-
+    response = requests.get(full_url, headers=headers.headers)
     content = json.loads(response.content)
-    print(json.dumps(content, indent=2))
+
+    groups_list = []
+    # print(json.dumps(content, indent=2))
+    for c in content:
+        c = c.get("group")
+        # c.get("name"))
+        groups_list.append(str(c.get("id")))
+
+    return groups_list
 
 
 if __name__ == "__main__":
-    main()
+    get_group_ids()

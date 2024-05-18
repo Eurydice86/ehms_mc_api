@@ -1,6 +1,7 @@
 import requests
 import json
 import datetime
+from api import headers
 
 
 def main():
@@ -17,7 +18,7 @@ def main():
 
     params = {"group_id": "28112", "start_date": last_week, "end_date": now}
 
-    response = requests.get(full_url, headers=headers, params=params)
+    response = requests.get(full_url, headers=headers.headers, params=params)
 
     content = json.loads(response.content)
     print(json.dumps(content, indent=2))
