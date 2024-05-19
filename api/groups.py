@@ -5,6 +5,7 @@ import headers
 
 def get_group_ids():
     base_url = "https://ehms.myclub.fi/api/"
+
     full_url = base_url + "groups"
     response = requests.get(full_url, headers=headers.headers)
     content = json.loads(response.content)

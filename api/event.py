@@ -6,6 +6,7 @@ import headers
 def event(event_id):
 
     base_url = "https://ehms.myclub.fi/api/"
+
     event_url = "events/" + event_id
     full_url = base_url + event_url
     response = requests.get(full_url, headers=headers.headers)
