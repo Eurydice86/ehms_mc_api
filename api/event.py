@@ -12,19 +12,36 @@ def event(event_id):
     response = requests.get(full_url, headers=headers.headers)
     content = json.loads(response.content)
 
+    event = content.get("event")
+    name = event.get("name")
+    starts_at = event.get("starts_at")
+    ends_at = event.get("ends_at")
+    group_id = event.get("group_id")
+    venue_id = event.get("venue_id")
+
+    event_dict = {
+        "event_id": event_id,
+        "event_name": name,
+        "starts_at": starts_at,
+        "ends_at": ends_at,
+        "group_id": group_id,
+        "venue_id": venue_id,
+    }
+
     participants_list = []
-    v = content.get("participations")
-    for vl in v:
+    participations = content.get("participations")
+    for p in participations:
         participation_dict = {
-            "member_id": str(vl.get("member_id")),
+            "member_id": str(p.get("member_id")),
             "event_id": event_id,
         }
-        # print(vl.get("member_id"), vl.get("self_registration"))
         participants_list.append(participation_dict)
 
-    return participants_list
+    return (event_dict, participants_list)
 
 
 if __name__ == "__main__":
     result = event("6582604")
-    print(json.dumps(result, indent=2))
+    result = event("7031269")
+
+    # print(json.dumps(result, indent=2))

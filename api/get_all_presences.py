@@ -2,36 +2,34 @@ import datetime
 import groups
 import events_in_group
 import event
-import csv
+import db
 
 
-def get_all_presences(start, end):
+def get_all_presences_in_date_range(start, end):
     print(f"From: {start} to {end}")
     groups_list = groups.get_group_ids()
+    group_ids_list = [g.get("group_id") for g in groups_list]
 
     events_list = []
     presences_list = []
+    event_dict_list = []
 
-    for group in groups_list:
+    for group in group_ids_list:
         events = events_in_group.events_in_group(group, start=start, end=end)
         events_list.extend(events)
 
     for ev in events_list:
-        presences = event.event(ev)
+        event_dict, presences = event.event(ev)
+        event_dict_list.append(event_dict)
         presences_list.extend(presences)
 
-    return presences_list
+    return presences_list, event_dict_list
 
 
 if __name__ == "__main__":
     end = datetime.datetime.now()
-    start = end - datetime.timedelta(days=7)
-    presences = get_all_presences(start, end)
+    start = end - datetime.timedelta(days=30)
+    presences, events = get_all_presences_in_date_range(start, end)
 
-    with open("data/presences.csv", "w", newline="") as presences_file:
-        fieldnames = ["member_id", "event_id"]
-        writer = csv.DictWriter(presences_file, fieldnames=fieldnames)
-
-        writer.writeheader()
-        for p in presences:
-            writer.writerow(p)
+    db.write_events(events=events)
+    db.write_presences(presences=presences)
