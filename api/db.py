@@ -20,6 +20,7 @@ def write_events(events):
             "ends_at",
             "group_id",
             "venue_id",
+            "course_id",
         ]
         writer = csv.DictWriter(events_file, fieldnames=fieldnames)
 
@@ -36,3 +37,19 @@ def write_groups(groups):
         writer.writeheader()
         for g in groups:
             writer.writerow(g)
+
+
+def write_members(members):
+    with open("data/members.csv", "w", newline="") as members_file:
+        fieldnames = [
+            "member_id",
+            "birthday",
+            "country",
+            "city",
+            "gender",
+        ]
+        writer = csv.DictWriter(members_file, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for m in members:
+            writer.writerow(m)
