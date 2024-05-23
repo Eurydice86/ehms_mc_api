@@ -1,0 +1,43 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table presences {
+  member_id text
+  event_id text
+  confirmed bool
+}
+
+Table members {
+  member_id text [primary key]
+   birthday date
+   country text
+   city text
+}
+
+Table events {
+  event_id text [primary key]
+  event_name text
+  starts_at datetime
+  ends_at datetime
+  group_id text
+  venue_id text
+  course_id text
+}
+
+Table venues {
+  venue_id text [primary key]
+  venue_name text
+  city text
+  street text
+  map_link text
+}
+
+Table groups {
+  group_id text [primary key]
+  group_name text
+}
+
+Ref: presences.member_id > members.member_id
+Ref: presences.event_id > events.event_id
+Ref: events.group_id > groups.group_id
+Ref: events.venue_id > venues.venue_id

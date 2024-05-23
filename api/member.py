@@ -28,4 +28,4 @@ def member(member_id):
 
 
 if __name__ == "__main__":
-    print(json.dumps(member("387"), indent=2))
+    print(json.dumps(member("347"), indent=2))

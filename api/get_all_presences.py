@@ -4,11 +4,13 @@ import events_in_group
 import event
 import member
 import db
+import venues
 
 
 def get_all_presences_in_date_range(start, end):
     print(f"From: {start} to {end}")
     groups_list = groups.get_group_ids()
+    venues.venues()
     group_ids_list = [g.get("group_id") for g in groups_list]
 
     events_list = []
@@ -39,7 +41,7 @@ def get_all_presences_in_date_range(start, end):
 
 if __name__ == "__main__":
     end = datetime.datetime.now()
-    start = end - datetime.timedelta(days=3)
+    start = end - datetime.timedelta(days=90)
     presences, events, members = get_all_presences_in_date_range(start, end)
 
     db.write_events(events=events)

@@ -3,7 +3,7 @@ import csv
 
 def write_presences(presences):
     with open("data/presences.csv", "w", newline="") as presences_file:
-        fieldnames = ["member_id", "event_id"]
+        fieldnames = ["member_id", "event_id", "confirmed"]
         writer = csv.DictWriter(presences_file, fieldnames=fieldnames)
 
         writer.writeheader()
@@ -39,10 +39,30 @@ def write_groups(groups):
             writer.writerow(g)
 
 
+def write_venues(venues):
+    with open("data/venues.csv", "w", newline="") as venues_file:
+        fieldnames = [
+            "venue_id",
+            "venue_name",
+            "city",
+            "street",
+            "map_link",
+        ]
+
+        writer = csv.DictWriter(venues_file, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for v in venues:
+            writer.writerow(v)
+
+
 def write_members(members):
     with open("data/members.csv", "w", newline="") as members_file:
         fieldnames = [
             "member_id",
+            # "first_name",
+            # "last_name",
+            # "email",
             "birthday",
             "country",
             "city",

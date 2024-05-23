@@ -18,7 +18,7 @@ def event(event_id):
     ends_at = event.get("ends_at")
     group_id = event.get("group_id")
     venue_id = event.get("venue_id")
-    course_id = (event.get("course_id") if event.get("course_id") else "-")
+    course_id = event.get("course_id") if event.get("course_id") else "-"
 
     event_dict = {
         "event_id": event_id,
@@ -27,7 +27,7 @@ def event(event_id):
         "ends_at": ends_at,
         "group_id": group_id,
         "venue_id": venue_id,
-        "course_id": course_id
+        "course_id": course_id,
     }
 
     participants_list = []
@@ -36,6 +36,7 @@ def event(event_id):
         participation_dict = {
             "member_id": str(p.get("member_id")),
             "event_id": event_id,
+            "confirmed": True if p.get("confirmed_at") else False,
         }
         participants_list.append(participation_dict)
 
