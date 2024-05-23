@@ -11,6 +11,16 @@ def write_presences(presences):
             writer.writerow(p)
 
 
+def write_memberships(memberships):
+    with open("data/memberships.csv", "w", newline="") as memberships_file:
+        fieldnames = ["member_id", "group_id"]
+        writer = csv.DictWriter(memberships_file, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for m in memberships:
+            writer.writerow(m)
+
+
 def write_events(events):
     with open("data/events.csv", "w", newline="") as events_file:
         fieldnames = [

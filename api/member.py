@@ -24,7 +24,15 @@ def member(member_id):
         "gender": m.get("gender"),
     }
 
-    return member
+    memberships = []
+    for q in m.get("memberships"):
+        membership = {
+            "member_id": member_id,
+            "group_id": q.get("group_id")
+        }
+        memberships.append(membership)
+
+    return member, memberships
 
 
 if __name__ == "__main__":
