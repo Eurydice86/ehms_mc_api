@@ -13,9 +13,11 @@ def event(event_id):
     content = json.loads(response.content)
 
     event = content.get("event")
+
     name = event.get("name")
     starts_at = event.get("starts_at")
     ends_at = event.get("ends_at")
+    event_category_id = event.get("event_category_id")
     group_id = event.get("group_id")
     venue_id = event.get("venue_id")
     course_id = event.get("course_id") if event.get("course_id") else "-"
@@ -25,6 +27,7 @@ def event(event_id):
         "event_name": name,
         "starts_at": starts_at,
         "ends_at": ends_at,
+        "event_category_id": event_category_id,
         "group_id": group_id,
         "venue_id": venue_id,
         "course_id": course_id,
@@ -45,6 +48,6 @@ def event(event_id):
 
 if __name__ == "__main__":
     result = event("6582604")
-    result = event("7031269")
+    result = event("2710707")
 
-    # print(json.dumps(result, indent=2))
+    print(json.dumps(result, indent=2))

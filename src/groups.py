@@ -1,7 +1,6 @@
 import requests
 import json
 import headers
-import db
 
 
 def get_group_ids():
@@ -19,7 +18,6 @@ def get_group_ids():
         group_name = c.get("name")
         groups_list.append({"group_id": group_id, "group_name": group_name})
 
-    db.write_groups(groups_list)
     return groups_list
 
 
