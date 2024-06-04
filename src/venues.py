@@ -4,7 +4,7 @@ import headers
 import db
 
 
-def venues():
+def venues(start):
     base_url = "https://ehms.myclub.fi/api/"
 
     full_url = base_url + "venues"
@@ -29,7 +29,7 @@ def venues():
             }
         )
 
-    db.write_venues(venues_list)
+    db.write_venues(venues_list, start)
 
 
 if __name__ == "__main__":
