@@ -1,12 +1,12 @@
 import csv
-import datetime
+
 import os
 
 
 def write_to_db(
     presences, events, courses, members, categories, groups, memberships, start, end
 ):
-    directory = "data/" + str(end) + "/"
+    directory = "data/" + str(start) + "_" + str(end) + "/"
     os.mkdir(directory)
     write_events(events=events, directory=directory)
     write_presences(presences=presences, directory=directory)
@@ -127,6 +127,7 @@ def write_members(members, directory):
             "country",
             "city",
             "gender",
+            "member_since",
         ]
         writer = csv.DictWriter(members_file, fieldnames=fieldnames)
 
