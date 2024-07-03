@@ -1,12 +1,22 @@
 import sqlite3
 
-db_name = "ehms.db"
+db_name = "data/ehms.db"
 
 # schema
 categories = """
 categories(
 category_id TEXT PRIMARY KEY,
 category_name TEXT
+)
+"""
+
+courses = """
+courses(
+course_id TEXT PRIMARY KEY,
+course_name TEXT,
+starts_at TEXT,
+ends_at TEXT,
+group_id TEXT
 )
 """
 
@@ -59,11 +69,11 @@ confirmed TEXT)
 def initialise_db() -> None:
     # Open connection
     conn = sqlite3.connect(database=db_name)
-    print("connection opened")
     cursor = conn.cursor()
 
     # Create tables
     cursor.execute(create_table(categories))
+    cursor.execute(create_table(courses))
     cursor.execute(create_table(events))
     cursor.execute(create_table(groups))
     cursor.execute(create_table(members))
@@ -72,7 +82,6 @@ def initialise_db() -> None:
 
     conn.commit()
     conn.close()
-    print("connection closed")
 
 
 def create_table(table: str) -> str:
@@ -82,11 +91,10 @@ def create_table(table: str) -> str:
 
 def add_rows(table: str, entries) -> None:
     if not entries:
-        print(f"no entries for {table}")
+        print(f"No entries for {table}")
         return
     conn = sqlite3.connect(database=db_name)
     cursor = conn.cursor()
-    print(f"connection opened for {table}")
 
     values_list = ""
     for e in entries:
@@ -97,4 +105,3 @@ def add_rows(table: str, entries) -> None:
 
     conn.commit()
     conn.close()
-    print("connection closed")
