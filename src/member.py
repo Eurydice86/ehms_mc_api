@@ -26,6 +26,7 @@ def member(member_id):
         "country": m.get("country"),
         "city": m.get("city"),
         "gender": m.get("gender"),
+        "member_since": m.get("created_at"),
     }
 
     memberships = []
@@ -37,5 +38,5 @@ def member(member_id):
 
 
 if __name__ == "__main__":
-    m = member("347")
-    # print(json.dumps(m, indent=2))
+    m, mships = member("347")
+    print(json.dumps(m, indent=2))

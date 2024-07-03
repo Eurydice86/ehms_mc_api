@@ -1,7 +1,7 @@
 import requests
 import json
 import headers
-import db
+# import db
 
 
 def venues(start):
@@ -29,7 +29,7 @@ def venues(start):
             }
         )
 
-    db.write_venues(venues_list, start)
+    # db.write_venues(venues_list, start)
 
 
 if __name__ == "__main__":
