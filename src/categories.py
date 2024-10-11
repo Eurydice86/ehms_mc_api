@@ -1,13 +1,17 @@
 import requests
 import json
-import headers
+import os
+from dotenv import load_dotenv
 
-
+load_dotenv()
 def categories():
+    myclub_token = os.getenv("MC_TOKEN")
+    headers = {"X-myClub-token": myclub_token}
+
     base_url = "https://ehms.myclub.fi/api/"
 
     full_url = base_url + "event_categories"
-    response = requests.get(full_url, headers=headers.headers)
+    response = requests.get(full_url, headers=headers)
     content = json.loads(response.content)
 
     categories_list = []

@@ -8,20 +8,26 @@ import params
 
 import json
 
+import os
+import sqlite3
+
 
 def run():
+    date = "2021-01-01T00:00:00.000"
+    start = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f").date() # convert it to date
 
-    # end = (datetime.datetime.now() - datetime.timedelta(days=1)).date()
-    # start = end - datetime.timedelta(days=7)
-    # start = "2024-01-20"
-    # end = "2024-05-30"
-    start = params.start_date
-    start = datetime.datetime.strptime(start, "%Y-%m-%d").date()
-    # end = datetime.datetime.strptime(end, "%Y-%m-%d").date()
-
+    db_sql.initialise_db()
+    dt = (
+        db_sql.most_recent_date()
+    )  # get the most recent date from the db (it returns a str)
+    if dt:
+        dt = dt[:-6]
+        start = datetime.datetime.strptime(
+            dt, "%Y-%m-%dT%H:%M:%S.%f"
+        ).date()  # convert it to date
+    
     interval = 30
     # either 30 days after start or yesterday (today might still have ongoing events)
-
     end = min(
         start + datetime.timedelta(days=interval),
         (datetime.datetime.now() - datetime.timedelta(days=1)).date(),
@@ -72,7 +78,7 @@ def run():
     db_sql.add_rows("groups", _groups)
     db_sql.add_rows("presences", presences)
 
-    with open("params.py", "w") as file:
+    with open("src/params.py", "w") as file:
         file.write('start_date = "' + str(end + datetime.timedelta(days=1)) + '"')
 
 

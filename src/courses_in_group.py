@@ -1,9 +1,10 @@
 import requests
 import json
-import headers
 import datetime
 import course
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 def courses_in_group(
     group_id,
@@ -11,13 +12,16 @@ def courses_in_group(
     end=datetime.datetime.now(),
 ):
 
+    myclub_token = os.getenv("MC_TOKEN")
+    headers = {"X-myClub-token": myclub_token}
+    
     base_url = "https://ehms.myclub.fi/api/"
     course_url = "courses/"
     full_url = base_url + course_url
 
     params = {"group_id": group_id, "start_date": start, "end_date": end}
 
-    response = requests.get(full_url, headers=headers.headers, params=params)
+    response = requests.get(full_url, headers=headers, params=params)
     content = json.loads(response.content)
 
     courses_list = []

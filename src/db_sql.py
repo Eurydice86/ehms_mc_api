@@ -1,6 +1,10 @@
 import sqlite3
+import os
+from dotenv import load_dotenv
 
-db_name = "data/ehms.db"
+load_dotenv()
+
+db_name = os.getenv("DB")
 
 # schema
 categories = """
@@ -105,3 +109,16 @@ def add_rows(table: str, entries) -> None:
 
     conn.commit()
     conn.close()
+
+
+def most_recent_date() -> str:
+    conn = sqlite3.connect(database=db_name)
+    cursor = conn.cursor()
+
+    command = "SELECT MAX(starts_at) FROM events;"
+    date = cursor.execute(command).fetchone()[0]
+
+    conn.commit()
+    conn.close()
+
+    return date

@@ -1,14 +1,16 @@
 import requests
 import json
-import headers
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 def member(member_id):
-
+    myclub_token = os.getenv("MC_TOKEN")
+    headers = {"X-myClub-token": myclub_token}
     base_url = "https://ehms.myclub.fi/api/"
     event_url = "members/" + member_id
     full_url = base_url + event_url
-    response = requests.get(full_url, headers=headers.headers)
+    response = requests.get(full_url, headers=headers)
     if response.status_code == 404:
         return (None, None)
 

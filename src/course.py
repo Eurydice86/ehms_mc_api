@@ -1,15 +1,19 @@
 import requests
 import json
-import headers
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 def course(course_id):
+
+    myclub_token = os.getenv("MC_TOKEN")
+    headers = {"X-myClub-token": myclub_token}
 
     base_url = "https://ehms.myclub.fi/api/"
 
     course_url = "courses/" + course_id
     full_url = base_url + course_url
-    response = requests.get(full_url, headers=headers.headers)
+    response = requests.get(full_url, headers=headers)
     content = json.loads(response.content)
 
     course = content.get("course")
