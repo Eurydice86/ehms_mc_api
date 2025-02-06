@@ -4,3 +4,4 @@ src/headers.py
 src/ehms.db
 data/
 .env
+google-cloud-sdk/

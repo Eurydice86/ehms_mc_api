@@ -5,23 +5,27 @@ import db_sql
 import categories
 import groups
 
+import copy_to_gstorage
+
 import json
 
 import os
 import sqlite3
 
 
-def run(interval = 60):
+def run(interval=60):
     """
     Call the API and populate / append to the database, using the specified interval.
     If no interval is explicitly specified, an interval of 60 days is used.
     """
-    
+
     if not os.path.exists("data"):
         os.makedir("data")
 
     date = "2021-01-01T00:00:00.000"
-    start = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f").date() # convert it to date
+    start = datetime.datetime.strptime(
+        date, "%Y-%m-%dT%H:%M:%S.%f"
+    ).date()  # convert it to date
 
     db_sql.initialise_db()
     dt = (
@@ -83,6 +87,25 @@ def run(interval = 60):
     db_sql.add_rows("memberships", memberships)
     db_sql.add_rows("groups", _groups)
     db_sql.add_rows("presences", presences)
+
+
+    print("Exporting to csv")
+    db_sql.table_to_csv("categories")
+    db_sql.table_to_csv("courses")
+    db_sql.table_to_csv("events")
+    db_sql.table_to_csv("members")
+    db_sql.table_to_csv("memberships")
+    db_sql.table_to_csv("groups")
+    db_sql.table_to_csv("presences")
+
+    print("Uploadind to GCS")
+    copy_to_gstorage.upload_blob("ehms-myclub", "data/categories.csv", "categories.csv")
+    copy_to_gstorage.upload_blob("ehms-myclub", "data/courses.csv", "courses.csv")
+    copy_to_gstorage.upload_blob("ehms-myclub", "data/events.csv", "events.csv")
+    copy_to_gstorage.upload_blob("ehms-myclub", "data/members.csv", "members.csv")
+    copy_to_gstorage.upload_blob("ehms-myclub", "data/memberships.csv", "memberships.csv")
+    copy_to_gstorage.upload_blob("ehms-myclub", "data/groups.csv", "groups.csv")
+    copy_to_gstorage.upload_blob("ehms-myclub", "data/presences.csv", "presences.csv")
 
 if __name__ == "__main__":
     run()
