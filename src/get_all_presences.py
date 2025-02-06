@@ -22,7 +22,7 @@ def get_all_presences_in_date_range(start, end):
     course_dict_list = []
     members_dict_list = []
     membership_dict_list = []
-
+    
     for group in group_ids_list:
         events = events_in_group.events_in_group(group, start=start, end=end)
         events_list.extend(events)

@@ -9,44 +9,44 @@ db_name = os.getenv("DB")
 # schema
 categories = """
 categories(
-category_id TEXT PRIMARY KEY,
+category_id INT PRIMARY KEY,
 category_name TEXT
 )
 """
 
 courses = """
 courses(
-course_id TEXT PRIMARY KEY,
+course_id INT PRIMARY KEY,
 course_name TEXT,
 starts_at TEXT,
 ends_at TEXT,
-group_id TEXT
+group_id INT
 )
 """
 
 events = """
 events(
-event_id TEXT PRIMARY KEY,
+event_id INT PRIMARY KEY,
 event_name TEXT,
 starts_at TEXT,
 ends_at TEXT,
-event_category_id TEXT,
-group_id TEXT,
-venue_id TEXT,
-course_id TEXT
+event_category_id INT,
+group_id INT,
+venue_id INT,
+course_id INT
 )
 """
 
 groups = """
 groups(
-group_id TEXT PRIMARY KEY,
+group_id INT PRIMARY KEY,
 group_name TEXT
 )
 """
 
 members = """
 members(
-member_id TEXT PRIMARY KEY,
+member_id INT PRIMARY KEY,
 active TEXT,
 birthday TEXT,
 country TEXT,
@@ -57,16 +57,19 @@ member_since TEXT)
 
 memberships = """
 memberships(
-member_id TEXT,
-group_id TEXT
+member_id INT,
+group_id INT,
+PRIMARY KEY (member_id, group_id)
 )
 """
 
 presences = """
 presences(
-member_id TEXT,
-event_id TEXT,
-confirmed TEXT)
+member_id INT,
+event_id INT,
+confirmed TEXT,
+PRIMARY KEY (member_id, event_id)
+)
 """
 
 

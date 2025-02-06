@@ -12,7 +12,15 @@ import os
 import sqlite3
 
 
-def run():
+def run(interval = 60):
+    """
+    Call the API and populate / append to the database, using the specified interval.
+    If no interval is explicitly specified, an interval of 60 days is used.
+    """
+    
+    if not os.path.exists("data"):
+        os.makedir("data")
+
     date = "2021-01-01T00:00:00.000"
     start = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f").date() # convert it to date
 
@@ -25,9 +33,8 @@ def run():
         start = datetime.datetime.strptime(
             dt, "%Y-%m-%dT%H:%M:%S.%f"
         ).date()  # convert it to date
-    
-    interval = 30
-    # either 30 days after start or yesterday (today might still have ongoing events)
+
+    # either <interval> days after start or yesterday (today might still have ongoing events)
     end = min(
         start + datetime.timedelta(days=interval),
         (datetime.datetime.now() - datetime.timedelta(days=1)).date(),

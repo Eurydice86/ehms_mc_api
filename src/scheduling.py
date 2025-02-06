@@ -7,7 +7,7 @@ def test(message):
     print(message)
 
 
-schedule.every(10).minutes.do(initialise.run)
+schedule.every().monday.at("00:00").do(initialise.run)
 
 while True:
     schedule.run_pending()

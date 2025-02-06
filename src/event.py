@@ -14,8 +14,8 @@ def event(event_id):
     event_url = "events/" + event_id
     full_url = base_url + event_url
     response = requests.get(full_url, headers=headers)
-    content = json.loads(response.content)
 
+    content = json.loads(response.content)
     event = content.get("event")
 
     name = event.get("name")
