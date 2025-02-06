@@ -4,7 +4,6 @@ import get_all_presences
 import db_sql
 import categories
 import groups
-import params
 
 import json
 
@@ -84,10 +83,6 @@ def run(interval = 60):
     db_sql.add_rows("memberships", memberships)
     db_sql.add_rows("groups", _groups)
     db_sql.add_rows("presences", presences)
-
-    with open("src/params.py", "w") as file:
-        file.write('start_date = "' + str(end + datetime.timedelta(days=1)) + '"')
-
 
 if __name__ == "__main__":
     run()
