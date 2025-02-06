@@ -1,6 +1,7 @@
 import sqlite3
 import os
 from dotenv import load_dotenv
+import csv
 
 load_dotenv()
 
@@ -114,6 +115,18 @@ def add_rows(table: str, entries) -> None:
     conn.close()
 
 
+def table_to_csv(table):
+    conn = sqlite3.connect(database=db_name)
+    cursor = conn.cursor()
+    cursor.execute(f"select * from {table}")
+    with open(f"data/{table}.csv", "w") as csv_file:
+      csv_writer = csv.writer(csv_file, delimiter=",")
+      csv_writer.writerow([i[0] for i in cursor.description])
+      csv_writer.writerows(cursor)
+
+    conn.commit()
+    conn.close()
+
 def most_recent_date() -> str:
     conn = sqlite3.connect(database=db_name)
     cursor = conn.cursor()
@@ -125,3 +138,6 @@ def most_recent_date() -> str:
     conn.close()
 
     return date
+
+if __name__ == "__main__":
+    table_to_csv("members")
