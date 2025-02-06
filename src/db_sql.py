@@ -120,7 +120,7 @@ def table_to_csv(table):
     cursor = conn.cursor()
     cursor.execute(f"select * from {table}")
     with open(f"data/{table}.csv", "w") as csv_file:
-      csv_writer = csv.writer(csv_file, delimiter=";")
+      csv_writer = csv.writer(csv_file, delimiter=",")
       csv_writer.writerow([i[0] for i in cursor.description])
       csv_writer.writerows(cursor)
 
