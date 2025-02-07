@@ -20,7 +20,7 @@ def run(interval=60):
     """
 
     if not os.path.exists("data"):
-        os.makedir("data")
+        os.makedirs("data")
 
     date = "2021-01-01T00:00:00.000"
     start = datetime.datetime.strptime(
