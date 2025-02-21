@@ -37,10 +37,10 @@ def run(interval=60):
             dt, "%Y-%m-%dT%H:%M:%S.%f"
         ).date()  # convert it to date
 
-    # either <interval> days after start or yesterday (today might still have ongoing events)
+    # either <interval> days after start or a week ago (people still sometimes go back to confirm presences they forgot)
     end = min(
         start + datetime.timedelta(days=interval),
-        (datetime.datetime.now() - datetime.timedelta(days=1)).date(),
+        (datetime.datetime.now() - datetime.timedelta(days=8)).date(),
     )
 
     presences, events, courses, members, memberships = (
