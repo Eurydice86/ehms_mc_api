@@ -2,7 +2,9 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
+
 
 def member(member_id):
     myclub_token = os.getenv("MC_TOKEN")
@@ -40,5 +42,9 @@ def member(member_id):
 
 
 if __name__ == "__main__":
-    m, mships = member("347")
-    print(json.dumps(m, indent=2))
+    members_list = [
+        "347",
+    ]
+    for mem in members_list:
+        m, memberships = member(mem)
+        print(json.dumps(m, indent=2))
