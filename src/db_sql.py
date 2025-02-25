@@ -114,7 +114,25 @@ def add_rows(table: str, entries) -> None:
     conn.commit()
     conn.close()
 
+def add_rows_replace(table: str, entries) -> None:
+    if not entries:
+        print(f"No entries for {table}")
+        return
+    conn = sqlite3.connect(database=db_name)
+    cursor = conn.cursor()
 
+    values_list = ""
+    for e in entries:
+        values_list += "('" + "', '".join(str(val) for val in e.values()) + "'),\n"
+    insert = f"""INSERT OR REPLACE INTO {table} VALUES {values_list[:-2]};"""
+
+    cursor.execute(insert)
+
+    conn.commit()
+    conn.close()
+
+
+    
 def table_to_csv(table):
     conn = sqlite3.connect(database=db_name)
     cursor = conn.cursor()

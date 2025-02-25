@@ -83,7 +83,7 @@ def run(interval=60):
     db_sql.add_rows("categories", _categories)
     db_sql.add_rows("courses", courses)
     db_sql.add_rows("events", events)
-    db_sql.add_rows("members", members)
+    db_sql.add_rows_replace("members", members)
     db_sql.add_rows("memberships", memberships)
     db_sql.add_rows("groups", _groups)
     db_sql.add_rows("presences", presences)
