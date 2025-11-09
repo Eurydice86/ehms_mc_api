@@ -19,8 +19,17 @@ def run(interval=60):
         date, "%Y-%m-%dT%H:%M:%S.%f"
     ).date()  # convert it to date
 
-    # TODO: Get most recent date from BigQuery instead of SQLite
-    # For now, we'll start from the beginning each time or you can manually set start date
+    # Get the most recent date from BigQuery
+    client = bigquery_upload.initialize_bigquery_client()
+    most_recent = bigquery_upload.get_most_recent_date(client)
+    if most_recent:
+        # Parse the date string and convert to date object
+        most_recent_clean = most_recent[:-4]  # Remove milliseconds and Z if present
+        most_recent_date = datetime.datetime.strptime(
+            most_recent_clean, "%Y-%m-%dT%H:%M:%S"
+        ).date()
+        # Add 7-day buffer to catch any modifications to recent events
+        start = most_recent_date - datetime.timedelta(days=7)
 
     # either <interval> days after start or a week ago
     # (people still sometimes go back to confirm presences they forgot)

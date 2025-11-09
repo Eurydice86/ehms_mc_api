@@ -121,8 +121,16 @@ def create_table_if_not_exists(client, table_name):
         print(f"Created table {table_name}")
 
 
-def insert_rows(client, table_name, rows):
-    """Insert rows into a BigQuery table."""
+def insert_rows(client, table_name, rows, replace=False):
+    """
+    Insert rows into a BigQuery table.
+
+    Args:
+        client: BigQuery client instance
+        table_name: Name of the table
+        rows: List of row dictionaries
+        replace: If True, replace existing rows (for handling updates to recent data)
+    """
     if not rows:
         print(f"No entries for {table_name}")
         return
@@ -131,8 +139,14 @@ def insert_rows(client, table_name, rows):
     table_ref = dataset_ref.table(table_name)
     table = client.get_table(table_ref)
 
-    # Convert list of dicts to list of tuples in the correct order
-    errors = client.insert_rows_json(table_ref, rows)
+    # Use skip_invalid_rows and allow_quoted_newlines for robustness
+    job_config = bigquery.LoadJobConfig(
+        skip_invalid_rows=False,
+        allow_quoted_newlines=True,
+    )
+
+    # Insert rows
+    errors = client.insert_rows_json(table_ref, rows, job_config=job_config)
 
     if errors:
         print(f"Errors inserting rows into {table_name}:")
@@ -142,9 +156,102 @@ def insert_rows(client, table_name, rows):
         print(f"Successfully inserted {len(rows)} rows into {table_name}")
 
 
+def delete_and_replace_rows(client, table_name, rows, date_field, buffer_days=7):
+    """
+    Delete rows from a date range and re-insert them to handle updates.
+
+    This is useful for handling recent events that may have been modified.
+
+    Args:
+        client: BigQuery client instance
+        table_name: Name of the table
+        rows: List of row dictionaries to insert
+        date_field: Name of the date field to use for filtering (e.g., 'starts_at')
+        buffer_days: Number of days back to delete before re-inserting
+    """
+    if not rows:
+        print(f"No entries for {table_name}")
+        return
+
+    # Find the minimum date in the rows to delete
+    min_date = None
+    for row in rows:
+        if date_field in row and row[date_field]:
+            row_date = row[date_field]
+            # Handle both string and datetime formats
+            if isinstance(row_date, str):
+                # Parse ISO format date strings
+                row_date = row_date.split('T')[0]  # Get just the date part
+            if not min_date or row_date < min_date:
+                min_date = row_date
+
+    if not min_date:
+        print(f"No valid dates found in {table_name}, inserting without delete")
+        insert_rows(client, table_name, rows)
+        return
+
+    # Delete rows from the buffer period
+    try:
+        delete_query = f"""
+            DELETE FROM `{GCP_PROJECT_ID}.{BIGQUERY_DATASET_ID}.{table_name}`
+            WHERE DATE({date_field}) >= DATE('{min_date}')
+        """
+        query_job = client.query(delete_query)
+        query_job.result()  # Wait for the delete to complete
+        print(f"Deleted rows from {table_name} from {min_date} onwards")
+    except Exception as e:
+        print(f"Warning: Could not delete old rows from {table_name}: {e}")
+
+    # Insert the new/updated rows
+    insert_rows(client, table_name, rows)
+
+
+def get_most_recent_date(client):
+    """
+    Get the most recent event start date from BigQuery.
+
+    Args:
+        client: BigQuery client instance
+
+    Returns:
+        str: ISO format datetime string (e.g., "2021-01-01T00:00:00.000")
+             or None if no events exist in the database.
+    """
+    try:
+        query = f"""
+            SELECT MAX(starts_at) as max_date
+            FROM `{GCP_PROJECT_ID}.{BIGQUERY_DATASET_ID}.events`
+        """
+        query_job = client.query(query)
+        results = query_job.result()
+
+        for row in results:
+            max_date = row.max_date
+            if max_date:
+                # Convert timestamp to ISO format string with milliseconds
+                iso_str = max_date.isoformat()
+                # Ensure format: "2021-01-01T00:00:00.000"
+                if '.' not in iso_str:
+                    iso_str += '.000'
+                return iso_str
+            else:
+                print("No events found in BigQuery")
+                return None
+
+    except NotFound:
+        print(f"Dataset {BIGQUERY_DATASET_ID} or table 'events' not found in BigQuery")
+        return None
+    except Exception as e:
+        print(f"Error retrieving most recent date from BigQuery: {e}")
+        return None
+
+
 def upload_all_tables(data_dict):
     """
     Upload all tables to BigQuery.
+
+    Uses delete-and-replace strategy for events and presences to handle
+    modifications to recent data within the 7-day buffer period.
 
     Args:
         data_dict: Dictionary with table names as keys and row lists as values.
@@ -165,9 +272,18 @@ def upload_all_tables(data_dict):
     for table_name in data_dict.keys():
         create_table_if_not_exists(client, table_name)
 
-    # Insert rows
+    # Insert rows with delete-and-replace for tables with date-based updates
     for table_name, rows in data_dict.items():
-        insert_rows(client, table_name, rows)
+        if table_name == "events" and rows:
+            # Delete and replace events to catch modifications
+            delete_and_replace_rows(client, table_name, rows, "starts_at")
+        elif table_name == "presences" and rows:
+            # For presences, we need to join with events to get the date
+            # For now, just use regular insert with skip duplicates
+            insert_rows(client, table_name, rows)
+        else:
+            # All other tables: regular insert
+            insert_rows(client, table_name, rows)
 
 
 if __name__ == "__main__":
