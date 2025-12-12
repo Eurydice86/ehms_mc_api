@@ -74,10 +74,10 @@ def get_table_schema(table_name):
             bigquery.SchemaField("event_name", "STRING"),
             bigquery.SchemaField("starts_at", "TIMESTAMP"),
             bigquery.SchemaField("ends_at", "TIMESTAMP"),
-            bigquery.SchemaField("event_category_id", "INTEGER"),
+            bigquery.SchemaField("event_category_id", "INTEGER", mode="NULLABLE"),
             bigquery.SchemaField("group_id", "INTEGER"),
-            bigquery.SchemaField("venue_id", "INTEGER"),
-            bigquery.SchemaField("course_id", "INTEGER"),
+            bigquery.SchemaField("venue_id", "INTEGER", mode="NULLABLE"),
+            bigquery.SchemaField("course_id", "INTEGER", mode="NULLABLE"),
         ],
         "groups": [
             bigquery.SchemaField("group_id", "INTEGER", mode="REQUIRED"),
@@ -109,14 +109,14 @@ def create_table_if_not_exists(client, table_name):
     """Create a BigQuery table if it doesn't already exist."""
     dataset_ref = client.dataset(BIGQUERY_DATASET_ID)
     table_ref = dataset_ref.table(table_name)
+    new_schema = get_table_schema(table_name)
 
     try:
-        client.get_table(table_ref)
+        table = client.get_table(table_ref)
         print(f"Table {table_name} already exists.")
         return
     except NotFound:
-        schema = get_table_schema(table_name)
-        table = bigquery.Table(table_ref, schema=schema)
+        table = bigquery.Table(table_ref, schema=new_schema)
         table = client.create_table(table)
         print(f"Created table {table_name}")
 
@@ -139,14 +139,8 @@ def insert_rows(client, table_name, rows, replace=False):
     table_ref = dataset_ref.table(table_name)
     table = client.get_table(table_ref)
 
-    # Use skip_invalid_rows and allow_quoted_newlines for robustness
-    job_config = bigquery.LoadJobConfig(
-        skip_invalid_rows=False,
-        allow_quoted_newlines=True,
-    )
-
     # Insert rows
-    errors = client.insert_rows_json(table_ref, rows, job_config=job_config)
+    errors = client.insert_rows_json(table_ref, rows, skip_invalid_rows=False)
 
     if errors:
         print(f"Errors inserting rows into {table_name}:")
@@ -269,11 +263,16 @@ def upload_all_tables(data_dict):
 
     # Create dataset and tables
     create_dataset_if_not_exists(client)
-    for table_name in data_dict.keys():
+    print(f"Creating tables if needed...")
+    for idx, table_name in enumerate(data_dict.keys(), 1):
+        print(f"  Checking table {idx}/{len(data_dict)}: {table_name}", end='\r')
         create_table_if_not_exists(client, table_name)
+    print(f"  All tables ready ({len(data_dict)} tables)              ")
 
     # Insert rows with delete-and-replace for tables with date-based updates
-    for table_name, rows in data_dict.items():
+    print(f"Uploading data to BigQuery...")
+    for idx, (table_name, rows) in enumerate(data_dict.items(), 1):
+        print(f"  [{idx}/{len(data_dict)}] Uploading {table_name}...")
         if table_name == "events" and rows:
             # Delete and replace events to catch modifications
             delete_and_replace_rows(client, table_name, rows, "starts_at")
@@ -284,6 +283,7 @@ def upload_all_tables(data_dict):
         else:
             # All other tables: regular insert
             insert_rows(client, table_name, rows)
+    print(f"Upload completed!")
 
 
 if __name__ == "__main__":

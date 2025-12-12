@@ -24,7 +24,7 @@ def event(event_id):
     event_category_id = event.get("event_category_id")
     group_id = event.get("group_id")
     venue_id = event.get("venue_id")
-    course_id = event.get("course_id") if event.get("course_id") else "-"
+    course_id = event.get("course_id")
 
     event_dict = {
         "event_id": event_id,
