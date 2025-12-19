@@ -9,9 +9,26 @@ import datetime
 
 
 def get_all_presences_in_date_range(start, end):
+    """
+    Fetch all presences, events, courses, members, and memberships for a date range.
+
+    This function orchestrates the entire data collection process:
+    1. Fetches all groups and venues
+    2. Gets events and courses for each group in the date range
+    3. Collects event details and participant presences
+    4. Fetches unique member details and their memberships
+
+    Args:
+        start (datetime.date): Start date for event range
+        end (datetime.date): End date for event range
+
+    Returns:
+        tuple: (presences_list, event_dict_list, course_dict_list,
+                members_dict_list, membership_dict_list)
+    """
     print(f"From: {start} to {end}")
     groups_list = groups.get_group_ids()
-    venues.venues(start)
+    venues.venues()
     group_ids_list = [g.get("group_id") for g in groups_list]
 
     events_list = []
@@ -48,16 +65,15 @@ def get_all_presences_in_date_range(start, end):
             print(f"  Processing course {idx}/{len(courses_list)}", end='\r')
         course_dict = course.course(cs)
         course_dict_list.append(course_dict)
-        presences_list.extend(presences)
     if courses_list:
         print(f"  Completed")
 
     print("Collecting unique members...")
+    members_set = set()
     for p in presences_list:
-        m = p.get("member_id")
-        members_list.append(m)
+        members_set.add(p.get("member_id"))
 
-    members_list = list(set(members_list))
+    members_list = list(members_set)
     print(f"Found {len(members_list)} unique members")
 
     print(f"Fetching member details...")
@@ -80,6 +96,6 @@ def get_all_presences_in_date_range(start, end):
 
 
 if __name__ == "__main__":
-    end = datetime.datetime.now()
+    end = datetime.datetime.now().date()
     start = end - datetime.timedelta(days=1)
-    get_all_presences_in_date_range()
+    get_all_presences_in_date_range(start, end)

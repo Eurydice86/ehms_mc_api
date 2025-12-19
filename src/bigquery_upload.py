@@ -4,7 +4,6 @@ Replaces the SQLite -> CSV -> GCS -> BigQuery pipeline.
 """
 
 import os
-import json
 from dotenv import load_dotenv
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
@@ -16,6 +15,9 @@ load_dotenv()
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "ehms-424721")
 BIGQUERY_DATASET_ID = os.getenv("BIGQUERY_DATASET_ID", "ehms_myclub")
 GOOGLE_CREDENTIALS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH")
+
+# Allowed table names for security
+ALLOWED_TABLES = {"categories", "courses", "events", "groups", "members", "memberships", "presences"}
 
 
 def initialize_bigquery_client():
@@ -59,33 +61,33 @@ def get_table_schema(table_name):
     """Define BigQuery schemas for each table."""
     schemas = {
         "categories": [
-            bigquery.SchemaField("category_id", "INTEGER", mode="REQUIRED"),
+            bigquery.SchemaField("category_id", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("category_name", "STRING"),
         ],
         "courses": [
-            bigquery.SchemaField("course_id", "INTEGER", mode="REQUIRED"),
+            bigquery.SchemaField("course_id", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("course_name", "STRING"),
             bigquery.SchemaField("starts_at", "TIMESTAMP"),
             bigquery.SchemaField("ends_at", "TIMESTAMP"),
-            bigquery.SchemaField("group_id", "INTEGER"),
+            bigquery.SchemaField("group_id", "STRING"),
         ],
         "events": [
-            bigquery.SchemaField("event_id", "INTEGER", mode="REQUIRED"),
+            bigquery.SchemaField("event_id", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("event_name", "STRING"),
             bigquery.SchemaField("starts_at", "TIMESTAMP"),
             bigquery.SchemaField("ends_at", "TIMESTAMP"),
-            bigquery.SchemaField("event_category_id", "INTEGER", mode="NULLABLE"),
-            bigquery.SchemaField("group_id", "INTEGER"),
-            bigquery.SchemaField("venue_id", "INTEGER", mode="NULLABLE"),
-            bigquery.SchemaField("course_id", "INTEGER", mode="NULLABLE"),
+            bigquery.SchemaField("event_category_id", "STRING", mode="NULLABLE"),
+            bigquery.SchemaField("group_id", "STRING"),
+            bigquery.SchemaField("venue_id", "STRING", mode="NULLABLE"),
+            bigquery.SchemaField("course_id", "STRING", mode="NULLABLE"),
         ],
         "groups": [
-            bigquery.SchemaField("group_id", "INTEGER", mode="REQUIRED"),
+            bigquery.SchemaField("group_id", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("group_name", "STRING"),
         ],
         "members": [
-            bigquery.SchemaField("member_id", "INTEGER", mode="REQUIRED"),
-            bigquery.SchemaField("active", "STRING"),
+            bigquery.SchemaField("member_id", "STRING", mode="REQUIRED"),
+            bigquery.SchemaField("active", "BOOLEAN"),
             bigquery.SchemaField("birthday", "DATE"),
             bigquery.SchemaField("country", "STRING"),
             bigquery.SchemaField("city", "STRING"),
@@ -93,13 +95,13 @@ def get_table_schema(table_name):
             bigquery.SchemaField("member_since", "DATE"),
         ],
         "memberships": [
-            bigquery.SchemaField("member_id", "INTEGER", mode="REQUIRED"),
-            bigquery.SchemaField("group_id", "INTEGER", mode="REQUIRED"),
+            bigquery.SchemaField("member_id", "STRING", mode="REQUIRED"),
+            bigquery.SchemaField("group_id", "STRING", mode="REQUIRED"),
         ],
         "presences": [
-            bigquery.SchemaField("member_id", "INTEGER", mode="REQUIRED"),
-            bigquery.SchemaField("event_id", "INTEGER", mode="REQUIRED"),
-            bigquery.SchemaField("confirmed", "STRING"),
+            bigquery.SchemaField("member_id", "STRING", mode="REQUIRED"),
+            bigquery.SchemaField("event_id", "STRING", mode="REQUIRED"),
+            bigquery.SchemaField("confirmed", "BOOLEAN"),
         ],
     }
     return schemas.get(table_name, [])
@@ -119,6 +121,192 @@ def create_table_if_not_exists(client, table_name):
         table = bigquery.Table(table_ref, schema=new_schema)
         table = client.create_table(table)
         print(f"Created table {table_name}")
+
+
+def get_primary_keys(table_name):
+    """Return the primary key field(s) for each table."""
+    primary_keys = {
+        "categories": ["category_id"],
+        "courses": ["course_id"],
+        "events": ["event_id"],
+        "groups": ["group_id"],
+        "members": ["member_id"],
+        "memberships": ["member_id", "group_id"],
+        "presences": ["member_id", "event_id"],
+    }
+    return primary_keys.get(table_name, [])
+
+
+def validate_rows(client, table_name, rows):
+    """
+    Validate that rows can be inserted into a BigQuery table without actually inserting them.
+
+    Creates a temporary table and attempts to insert the rows, then immediately deletes the table.
+    This allows us to catch validation errors before committing to the actual merge operation.
+
+    Args:
+        client: BigQuery client instance
+        table_name: Name of the table
+        rows: List of row dictionaries
+
+    Returns:
+        True if validation successful
+
+    Raises:
+        RuntimeError: If validation fails with details about the errors
+    """
+    if not rows:
+        return True
+
+    # Create a temporary validation table
+    import uuid
+    validation_table_name = f"{table_name}_validation_{uuid.uuid4().hex[:8]}"
+    dataset_ref = client.dataset(BIGQUERY_DATASET_ID)
+    validation_table_ref = dataset_ref.table(validation_table_name)
+
+    # Get schema for the table
+    schema = get_table_schema(table_name)
+
+    validation_table_created = False
+    try:
+        # Create temporary validation table
+        validation_table = bigquery.Table(validation_table_ref, schema=schema)
+        validation_table = client.create_table(validation_table)
+        validation_table_created = True
+
+        # Attempt to insert data
+        errors = client.insert_rows_json(validation_table_ref, rows, skip_invalid_rows=False)
+        if errors:
+            error_msg = f"Validation failed for {table_name}:\n"
+            for error in errors:
+                error_msg += f"  Row index: {error.get('index', 'unknown')}\n"
+                for err in error.get('errors', []):
+                    error_msg += f"    - {err.get('reason', 'unknown')}: {err.get('message', 'no message')}\n"
+                    error_msg += f"      Location: {err.get('location', 'unknown')}\n"
+            raise RuntimeError(error_msg)
+
+        return True
+
+    finally:
+        # Clean up validation table
+        if validation_table_created:
+            try:
+                client.delete_table(validation_table_ref)
+            except NotFound:
+                pass
+            except Exception as e:
+                print(f"Warning: Could not delete validation table {validation_table_name}: {e}")
+
+
+def merge_rows(client, table_name, rows):
+    """
+    Merge rows into a BigQuery table using MERGE statement.
+
+    This performs an upsert operation: inserts new rows and updates existing ones
+    based on the primary key(s) for the table.
+
+    Args:
+        client: BigQuery client instance
+        table_name: Name of the table
+        rows: List of row dictionaries
+    """
+    # Validate table name for security
+    if table_name not in ALLOWED_TABLES:
+        raise ValueError(f"Invalid table name: {table_name}. Allowed tables: {ALLOWED_TABLES}")
+
+    if not rows:
+        print(f"No entries for {table_name}")
+        return
+
+    primary_keys = get_primary_keys(table_name)
+    if not primary_keys:
+        print(f"Warning: No primary keys defined for {table_name}, using insert_rows instead")
+        insert_rows(client, table_name, rows)
+        return
+
+    # Create a temporary table name with unique suffix to avoid collisions
+    import uuid
+    temp_table_name = f"{table_name}_temp_{uuid.uuid4().hex[:8]}"
+    dataset_ref = client.dataset(BIGQUERY_DATASET_ID)
+    temp_table_ref = dataset_ref.table(temp_table_name)
+
+    # Get schema for the table
+    schema = get_table_schema(table_name)
+
+    temp_table_created = False
+    try:
+        # Create temporary table
+        temp_table = bigquery.Table(temp_table_ref, schema=schema)
+        temp_table = client.create_table(temp_table)
+        temp_table_created = True
+
+        # Insert data into temporary table
+        errors = client.insert_rows_json(temp_table_ref, rows, skip_invalid_rows=False)
+        if errors:
+            print(f"Errors inserting rows into temp table {temp_table_name}:")
+            for error in errors:
+                print(f"  Row index: {error.get('index', 'unknown')}")
+                for err in error.get('errors', []):
+                    print(f"    - {err.get('reason', 'unknown')}: {err.get('message', 'no message')}")
+                    print(f"      Location: {err.get('location', 'unknown')}")
+            raise RuntimeError(f"Failed to insert rows into {temp_table_name}")
+
+        # Build MERGE statement
+        match_condition = " AND ".join([f"target.{key} = source.{key}" for key in primary_keys])
+
+        # Get all field names from schema
+        all_fields = [field.name for field in schema]
+
+        # Build UPDATE SET clause (update all fields except primary keys)
+        update_fields = [f for f in all_fields if f not in primary_keys]
+
+        # Build INSERT clause
+        insert_fields = ", ".join(all_fields)
+        insert_values = ", ".join([f"source.{field}" for field in all_fields])
+
+        # Build MERGE query - handle edge case where there are no non-PK fields to update
+        if not update_fields:
+            # If all fields are primary keys, only INSERT (no UPDATE needed)
+            merge_query = f"""
+                MERGE `{GCP_PROJECT_ID}.{BIGQUERY_DATASET_ID}.{table_name}` AS target
+                USING `{GCP_PROJECT_ID}.{BIGQUERY_DATASET_ID}.{temp_table_name}` AS source
+                ON {match_condition}
+                WHEN NOT MATCHED THEN
+                    INSERT ({insert_fields})
+                    VALUES ({insert_values})
+            """
+        else:
+            # Normal case: both UPDATE and INSERT
+            update_set = ", ".join([f"target.{field} = source.{field}" for field in update_fields])
+            merge_query = f"""
+                MERGE `{GCP_PROJECT_ID}.{BIGQUERY_DATASET_ID}.{table_name}` AS target
+                USING `{GCP_PROJECT_ID}.{BIGQUERY_DATASET_ID}.{temp_table_name}` AS source
+                ON {match_condition}
+                WHEN MATCHED THEN
+                    UPDATE SET {update_set}
+                WHEN NOT MATCHED THEN
+                    INSERT ({insert_fields})
+                    VALUES ({insert_values})
+            """
+
+        # Execute MERGE
+        query_job = client.query(merge_query)
+        result = query_job.result()
+
+        print(f"Successfully merged {len(rows)} rows into {table_name}")
+
+    except Exception as e:
+        print(f"Error during merge operation for {table_name}: {e}")
+        raise
+    finally:
+        # Clean up temporary table only if it was created
+        if temp_table_created:
+            try:
+                client.delete_table(temp_table_ref)
+            except NotFound:
+                pass  # Already deleted, that's fine
+            except Exception as e:
+                print(f"Warning: Could not delete temp table {temp_table_name}: {e}")
 
 
 def insert_rows(client, table_name, rows, replace=False):
@@ -148,56 +336,6 @@ def insert_rows(client, table_name, rows, replace=False):
             print(error)
     else:
         print(f"Successfully inserted {len(rows)} rows into {table_name}")
-
-
-def delete_and_replace_rows(client, table_name, rows, date_field, buffer_days=7):
-    """
-    Delete rows from a date range and re-insert them to handle updates.
-
-    This is useful for handling recent events that may have been modified.
-
-    Args:
-        client: BigQuery client instance
-        table_name: Name of the table
-        rows: List of row dictionaries to insert
-        date_field: Name of the date field to use for filtering (e.g., 'starts_at')
-        buffer_days: Number of days back to delete before re-inserting
-    """
-    if not rows:
-        print(f"No entries for {table_name}")
-        return
-
-    # Find the minimum date in the rows to delete
-    min_date = None
-    for row in rows:
-        if date_field in row and row[date_field]:
-            row_date = row[date_field]
-            # Handle both string and datetime formats
-            if isinstance(row_date, str):
-                # Parse ISO format date strings
-                row_date = row_date.split('T')[0]  # Get just the date part
-            if not min_date or row_date < min_date:
-                min_date = row_date
-
-    if not min_date:
-        print(f"No valid dates found in {table_name}, inserting without delete")
-        insert_rows(client, table_name, rows)
-        return
-
-    # Delete rows from the buffer period
-    try:
-        delete_query = f"""
-            DELETE FROM `{GCP_PROJECT_ID}.{BIGQUERY_DATASET_ID}.{table_name}`
-            WHERE DATE({date_field}) >= DATE('{min_date}')
-        """
-        query_job = client.query(delete_query)
-        query_job.result()  # Wait for the delete to complete
-        print(f"Deleted rows from {table_name} from {min_date} onwards")
-    except Exception as e:
-        print(f"Warning: Could not delete old rows from {table_name}: {e}")
-
-    # Insert the new/updated rows
-    insert_rows(client, table_name, rows)
 
 
 def get_most_recent_date(client):
@@ -244,8 +382,14 @@ def upload_all_tables(data_dict):
     """
     Upload all tables to BigQuery.
 
-    Uses delete-and-replace strategy for events and presences to handle
-    modifications to recent data within the 7-day buffer period.
+    Uses MERGE (upsert) strategy for all tables to handle updates to existing records.
+    This ensures that:
+    - New records are inserted
+    - Existing records (matched by primary key) are updated
+    - No duplicates are created
+
+    Validation is performed on ALL tables before ANY data is inserted to prevent
+    partial failures that would leave the database in an inconsistent state.
 
     Args:
         data_dict: Dictionary with table names as keys and row lists as values.
@@ -269,20 +413,39 @@ def upload_all_tables(data_dict):
         create_table_if_not_exists(client, table_name)
     print(f"  All tables ready ({len(data_dict)} tables)              ")
 
-    # Insert rows with delete-and-replace for tables with date-based updates
+    # VALIDATION PHASE: Validate ALL tables before inserting ANY data
+    print(f"Validating data for all tables...")
+    validation_errors = []
+    for idx, (table_name, rows) in enumerate(data_dict.items(), 1):
+        if not rows:
+            print(f"  [{idx}/{len(data_dict)}] Skipping validation for {table_name} (no data)")
+            continue
+
+        print(f"  [{idx}/{len(data_dict)}] Validating {table_name} ({len(rows)} rows)...")
+        try:
+            validate_rows(client, table_name, rows)
+            print(f"  [{idx}/{len(data_dict)}] ✓ {table_name} validation passed")
+        except Exception as e:
+            validation_errors.append((table_name, str(e)))
+            print(f"  [{idx}/{len(data_dict)}] ✗ {table_name} validation FAILED")
+
+    # If any validation failed, abort before inserting anything
+    if validation_errors:
+        print("\n" + "="*80)
+        print("VALIDATION FAILED - No data was inserted")
+        print("="*80)
+        for table_name, error in validation_errors:
+            print(f"\n{table_name}:")
+            print(error)
+        raise RuntimeError(f"Validation failed for {len(validation_errors)} table(s). No data was inserted to maintain consistency.")
+
+    print(f"✓ All validations passed!\n")
+
+    # INSERTION PHASE: Now that all validations passed, perform the actual merges
     print(f"Uploading data to BigQuery...")
     for idx, (table_name, rows) in enumerate(data_dict.items(), 1):
         print(f"  [{idx}/{len(data_dict)}] Uploading {table_name}...")
-        if table_name == "events" and rows:
-            # Delete and replace events to catch modifications
-            delete_and_replace_rows(client, table_name, rows, "starts_at")
-        elif table_name == "presences" and rows:
-            # For presences, we need to join with events to get the date
-            # For now, just use regular insert with skip duplicates
-            insert_rows(client, table_name, rows)
-        else:
-            # All other tables: regular insert
-            insert_rows(client, table_name, rows)
+        merge_rows(client, table_name, rows)
     print(f"Upload completed!")
 
 

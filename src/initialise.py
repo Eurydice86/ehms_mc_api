@@ -1,4 +1,5 @@
 import datetime
+import argparse
 
 import get_all_presences
 import categories
@@ -10,8 +11,20 @@ import os
 
 def run(interval=60):
     """
-    Call the API and populate BigQuery directly, using the specified interval.
-    If no interval is explicitly specified, an interval of 60 days is used.
+    Main pipeline function to fetch data from MyClub API and upload to BigQuery.
+
+    This function:
+    1. Determines the date range (from most recent BigQuery data - 7 days buffer)
+    2. Fetches all data (presences, events, courses, members, etc.) from MyClub API
+    3. Uploads data directly to BigQuery using MERGE (upsert) strategy
+
+    The 7-day buffer ensures that any modifications to recent events are captured.
+
+    Args:
+        interval (int): Number of days to fetch from the start date (default: 60)
+
+    Raises:
+        Exception: If BigQuery upload fails or API calls fail
     """
 
     date = "2021-01-01T00:00:00.000"
@@ -42,29 +55,8 @@ def run(interval=60):
     _categories = categories.categories()
     _groups = groups.get_group_ids()
 
-    # Helper function to clean data (replace single quotes with question marks)
-    def clean_data(data_list, name="data"):
-        print(f"Cleaning {len(data_list)} {name}...", end='\r')
-        for i in range(len(data_list)):
-            for k, v in data_list[i].items():
-                # Preserve None values for nullable fields
-                if v is None:
-                    data_list[i][k] = None
-                else:
-                    data_list[i][k] = str(v).replace("'", "?")
-        print(f"Cleaned {len(data_list)} {name}  ")
-        return data_list
-
-    # Clean all data
-    print("Cleaning data...")
-    _categories = clean_data(_categories, "categories")
-    courses = clean_data(courses, "courses")
-    events = clean_data(events, "events")
-    members = clean_data(members, "members")
-    memberships = clean_data(memberships, "memberships")
-    _groups = clean_data(_groups, "groups")
-    presences = clean_data(presences, "presences")
-    print("Data cleaning completed")
+    # Note: No data cleaning needed - BigQuery handles all data types properly
+    # and parameterized queries in MERGE statement prevent SQL injection
 
     # Prepare data dictionary for BigQuery upload
     data_to_upload = {
@@ -83,4 +75,17 @@ def run(interval=60):
 
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser(
+        description="Fetch data from MyClub API and upload to BigQuery"
+    )
+    parser.add_argument(
+        "interval",
+        type=int,
+        nargs="?",
+        default=60,
+        help="Number of days to fetch from the start date (default: 60)"
+    )
+    args = parser.parse_args()
+
+    print(f"Running with interval: {args.interval} days")
+    run(interval=args.interval)
