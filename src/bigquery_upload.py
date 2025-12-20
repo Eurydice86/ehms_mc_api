@@ -11,6 +11,14 @@ from google.oauth2 import service_account
 
 load_dotenv()
 
+
+def progress_bar(current, total, width=30):
+    """Generate a progress bar string."""
+    percentage = current / total if total > 0 else 0
+    filled = int(width * percentage)
+    bar = '█' * filled + '░' * (width - filled)
+    return f"[{bar}] {current}/{total}"
+
 # Configuration
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "ehms-424721")
 BIGQUERY_DATASET_ID = os.getenv("BIGQUERY_DATASET_ID", "ehms_myclub")
@@ -33,11 +41,9 @@ def initialize_bigquery_client():
             GOOGLE_CREDENTIALS_PATH
         )
         client = bigquery.Client(project=GCP_PROJECT_ID, credentials=credentials)
-        print(f"Initialized BigQuery client with credentials from {GOOGLE_CREDENTIALS_PATH}")
     else:
         # Use default application credentials
         client = bigquery.Client(project=GCP_PROJECT_ID)
-        print("Initialized BigQuery client with default application credentials")
 
     return client
 
@@ -49,7 +55,6 @@ def create_dataset_if_not_exists(client):
 
     try:
         client.get_dataset(dataset_ref)
-        print(f"Dataset {dataset_id} already exists.")
     except NotFound:
         dataset = bigquery.Dataset(dataset_ref)
         dataset.location = "US"
@@ -115,7 +120,6 @@ def create_table_if_not_exists(client, table_name):
 
     try:
         table = client.get_table(table_ref)
-        print(f"Table {table_name} already exists.")
         return
     except NotFound:
         table = bigquery.Table(table_ref, schema=new_schema)
@@ -243,7 +247,7 @@ def merge_rows(client, table_name, rows):
         # Insert data into temporary table
         errors = client.insert_rows_json(temp_table_ref, rows, skip_invalid_rows=False)
         if errors:
-            print(f"Errors inserting rows into temp table {temp_table_name}:")
+            print(f"\nErrors inserting rows into temp table {temp_table_name}:")
             for error in errors:
                 print(f"  Row index: {error.get('index', 'unknown')}")
                 for err in error.get('errors', []):
@@ -293,7 +297,7 @@ def merge_rows(client, table_name, rows):
         query_job = client.query(merge_query)
         result = query_job.result()
 
-        print(f"Successfully merged {len(rows)} rows into {table_name}")
+        print(f" ✓ successfully merged {len(rows)} rows")
 
     except Exception as e:
         print(f"Error during merge operation for {table_name}: {e}")
@@ -408,10 +412,9 @@ def upload_all_tables(data_dict):
     # Create dataset and tables
     create_dataset_if_not_exists(client)
     print(f"Creating tables if needed...")
-    for idx, table_name in enumerate(data_dict.keys(), 1):
-        print(f"  Checking table {idx}/{len(data_dict)}: {table_name}", end='\r')
+    for table_name in data_dict.keys():
         create_table_if_not_exists(client, table_name)
-    print(f"  All tables ready ({len(data_dict)} tables)              ")
+    print(f"  All tables ready ({len(data_dict)} tables)")
 
     # VALIDATION PHASE: Validate ALL tables before inserting ANY data
     print(f"Validating data for all tables...")
@@ -421,13 +424,13 @@ def upload_all_tables(data_dict):
             print(f"  [{idx}/{len(data_dict)}] Skipping validation for {table_name} (no data)")
             continue
 
-        print(f"  [{idx}/{len(data_dict)}] Validating {table_name} ({len(rows)} rows)...")
+        print(f"  [{idx}/{len(data_dict)}] Validating {table_name} ({len(rows)} rows)...", end='')
         try:
             validate_rows(client, table_name, rows)
-            print(f"  [{idx}/{len(data_dict)}] ✓ {table_name} validation passed")
+            print(f" ✓ passed")
         except Exception as e:
             validation_errors.append((table_name, str(e)))
-            print(f"  [{idx}/{len(data_dict)}] ✗ {table_name} validation FAILED")
+            print(f" ✗ FAILED")
 
     # If any validation failed, abort before inserting anything
     if validation_errors:
@@ -444,9 +447,9 @@ def upload_all_tables(data_dict):
     # INSERTION PHASE: Now that all validations passed, perform the actual merges
     print(f"Uploading data to BigQuery...")
     for idx, (table_name, rows) in enumerate(data_dict.items(), 1):
-        print(f"  [{idx}/{len(data_dict)}] Uploading {table_name}...")
+        print(f"  [{idx}/{len(data_dict)}] Uploading {table_name}...", end='', flush=True)
         merge_rows(client, table_name, rows)
-    print(f"Upload completed!")
+    print(f"  Upload completed!")
 
 
 if __name__ == "__main__":
