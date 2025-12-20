@@ -3,6 +3,7 @@ import json
 import os
 
 from dotenv import load_dotenv
+from logger import error
 
 load_dotenv()
 
@@ -41,16 +42,16 @@ def get_group_ids():
         return groups_list
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP error fetching groups: {e}")
+        error(f"HTTP error fetching groups: {e}")
         raise
     except requests.exceptions.Timeout:
-        print(f"Timeout fetching groups")
+        error(f"Timeout fetching groups")
         raise
     except requests.exceptions.RequestException as e:
-        print(f"Request error fetching groups: {e}")
+        error(f"Request error fetching groups: {e}")
         raise
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON response for groups: {e}")
+        error(f"Invalid JSON response for groups: {e}")
         raise
 
 

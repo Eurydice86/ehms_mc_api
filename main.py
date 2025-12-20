@@ -4,6 +4,7 @@ This function is triggered by Cloud Scheduler to run the data pipeline daily.
 """
 import functions_framework
 from src import initialise
+from src.logger import log, error
 import sys
 import os
 
@@ -23,26 +24,26 @@ def run_pipeline(request):
         Response tuple with message and status code
     """
     try:
-        print("Starting EHMS MyClub API pipeline...")
+        log("Starting EHMS MyClub API pipeline...")
 
         # Get optional interval parameter from request (default 60 days)
         interval = 60
         if request.args and 'interval' in request.args:
             try:
                 interval = int(request.args.get('interval'))
-                print(f"Using custom interval: {interval} days")
+                log(f"Using custom interval: {interval} days")
             except ValueError:
-                print(f"Invalid interval parameter, using default: {interval} days")
+                log(f"Invalid interval parameter, using default: {interval} days")
 
         # Run the pipeline
         initialise.run(interval=interval)
 
-        print("Pipeline completed successfully!")
+        log("Pipeline completed successfully!")
         return {'status': 'success', 'message': 'Pipeline executed successfully'}, 200
 
     except Exception as e:
         error_msg = f"Pipeline failed: {str(e)}"
-        print(error_msg)
+        error(error_msg)
         import traceback
         traceback.print_exc()
         return {'status': 'error', 'message': error_msg}, 500
@@ -60,12 +61,12 @@ def run_pipeline_cloud_event(cloud_event):
         None
     """
     try:
-        print("Starting EHMS MyClub API pipeline (CloudEvent trigger)...")
+        log("Starting EHMS MyClub API pipeline (CloudEvent trigger)...")
         initialise.run(interval=60)
-        print("Pipeline completed successfully!")
+        log("Pipeline completed successfully!")
     except Exception as e:
         error_msg = f"Pipeline failed: {str(e)}"
-        print(error_msg)
+        error(error_msg)
         import traceback
         traceback.print_exc()
         raise

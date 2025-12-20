@@ -2,6 +2,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
+from logger import error, log
 load_dotenv()
 
 def course(course_id):
@@ -46,19 +47,19 @@ def course(course_id):
         return course_dict
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP error fetching course {course_id}: {e}")
+        error(f"HTTP error fetching course {course_id}: {e}")
         raise
     except requests.exceptions.Timeout:
-        print(f"Timeout fetching course {course_id}")
+        error(f"Timeout fetching course {course_id}")
         raise
     except requests.exceptions.RequestException as e:
-        print(f"Request error fetching course {course_id}: {e}")
+        error(f"Request error fetching course {course_id}: {e}")
         raise
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON response for course {course_id}: {e}")
+        error(f"Invalid JSON response for course {course_id}: {e}")
         raise
 
 
 if __name__ == "__main__":
     cs = course("7031269")
-    print(json.dumps(cs, indent=2))
+    log(json.dumps(cs, indent=2))

@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 from google.oauth2 import service_account
+from logger import log, error
 
 load_dotenv()
 
@@ -59,7 +60,7 @@ def create_dataset_if_not_exists(client):
         dataset = bigquery.Dataset(dataset_ref)
         dataset.location = "US"
         dataset = client.create_dataset(dataset, timeout=30)
-        print(f"Created dataset {dataset_id}")
+        log(f"Created dataset {dataset_id}")
 
 
 def get_table_schema(table_name):
@@ -124,7 +125,7 @@ def create_table_if_not_exists(client, table_name):
     except NotFound:
         table = bigquery.Table(table_ref, schema=new_schema)
         table = client.create_table(table)
-        print(f"Created table {table_name}")
+        log(f"Created table {table_name}")
 
 
 def get_primary_keys(table_name):
@@ -199,7 +200,7 @@ def validate_rows(client, table_name, rows):
             except NotFound:
                 pass
             except Exception as e:
-                print(f"Warning: Could not delete validation table {validation_table_name}: {e}")
+                log(f"Warning: Could not delete validation table {validation_table_name}: {e}")
 
 
 def merge_rows(client, table_name, rows):
@@ -219,12 +220,12 @@ def merge_rows(client, table_name, rows):
         raise ValueError(f"Invalid table name: {table_name}. Allowed tables: {ALLOWED_TABLES}")
 
     if not rows:
-        print(f"No entries for {table_name}")
+        log(f"No entries for {table_name}")
         return
 
     primary_keys = get_primary_keys(table_name)
     if not primary_keys:
-        print(f"Warning: No primary keys defined for {table_name}, using insert_rows instead")
+        log(f"Warning: No primary keys defined for {table_name}, using insert_rows instead")
         insert_rows(client, table_name, rows)
         return
 
@@ -247,12 +248,12 @@ def merge_rows(client, table_name, rows):
         # Insert data into temporary table
         errors = client.insert_rows_json(temp_table_ref, rows, skip_invalid_rows=False)
         if errors:
-            print(f"\nErrors inserting rows into temp table {temp_table_name}:")
-            for error in errors:
-                print(f"  Row index: {error.get('index', 'unknown')}")
-                for err in error.get('errors', []):
-                    print(f"    - {err.get('reason', 'unknown')}: {err.get('message', 'no message')}")
-                    print(f"      Location: {err.get('location', 'unknown')}")
+            error(f"\nErrors inserting rows into temp table {temp_table_name}:")
+            for err_item in errors:
+                error(f"  Row index: {err_item.get('index', 'unknown')}")
+                for err in err_item.get('errors', []):
+                    error(f"    - {err.get('reason', 'unknown')}: {err.get('message', 'no message')}")
+                    error(f"      Location: {err.get('location', 'unknown')}")
             raise RuntimeError(f"Failed to insert rows into {temp_table_name}")
 
         # Build MERGE statement
@@ -297,10 +298,10 @@ def merge_rows(client, table_name, rows):
         query_job = client.query(merge_query)
         result = query_job.result()
 
-        print(f" ✓ successfully merged {len(rows)} rows")
+        log(f" ✓ successfully merged {len(rows)} rows")
 
     except Exception as e:
-        print(f"Error during merge operation for {table_name}: {e}")
+        error(f"Error during merge operation for {table_name}: {e}")
         raise
     finally:
         # Clean up temporary table only if it was created
@@ -310,7 +311,7 @@ def merge_rows(client, table_name, rows):
             except NotFound:
                 pass  # Already deleted, that's fine
             except Exception as e:
-                print(f"Warning: Could not delete temp table {temp_table_name}: {e}")
+                log(f"Warning: Could not delete temp table {temp_table_name}: {e}")
 
 
 def insert_rows(client, table_name, rows, replace=False):
@@ -324,7 +325,7 @@ def insert_rows(client, table_name, rows, replace=False):
         replace: If True, replace existing rows (for handling updates to recent data)
     """
     if not rows:
-        print(f"No entries for {table_name}")
+        log(f"No entries for {table_name}")
         return
 
     dataset_ref = client.dataset(BIGQUERY_DATASET_ID)
@@ -335,11 +336,11 @@ def insert_rows(client, table_name, rows, replace=False):
     errors = client.insert_rows_json(table_ref, rows, skip_invalid_rows=False)
 
     if errors:
-        print(f"Errors inserting rows into {table_name}:")
-        for error in errors:
-            print(error)
+        error(f"Errors inserting rows into {table_name}:")
+        for err in errors:
+            error(err)
     else:
-        print(f"Successfully inserted {len(rows)} rows into {table_name}")
+        log(f"Successfully inserted {len(rows)} rows into {table_name}")
 
 
 def get_most_recent_date(client):
@@ -371,14 +372,14 @@ def get_most_recent_date(client):
                     iso_str += '.000'
                 return iso_str
             else:
-                print("No events found in BigQuery")
+                log("No events found in BigQuery")
                 return None
 
     except NotFound:
-        print(f"Dataset {BIGQUERY_DATASET_ID} or table 'events' not found in BigQuery")
+        log(f"Dataset {BIGQUERY_DATASET_ID} or table 'events' not found in BigQuery")
         return None
     except Exception as e:
-        print(f"Error retrieving most recent date from BigQuery: {e}")
+        error(f"Error retrieving most recent date from BigQuery: {e}")
         return None
 
 
@@ -411,49 +412,49 @@ def upload_all_tables(data_dict):
 
     # Create dataset and tables
     create_dataset_if_not_exists(client)
-    print(f"Creating tables if needed...")
+    log(f"Creating tables if needed...")
     for table_name in data_dict.keys():
         create_table_if_not_exists(client, table_name)
-    print(f"  All tables ready ({len(data_dict)} tables)")
+    log(f"  All tables ready ({len(data_dict)} tables)")
 
     # VALIDATION PHASE: Validate ALL tables before inserting ANY data
-    print(f"Validating data for all tables...")
+    log(f"Validating data for all tables...")
     validation_errors = []
     for idx, (table_name, rows) in enumerate(data_dict.items(), 1):
         if not rows:
-            print(f"  [{idx}/{len(data_dict)}] Skipping validation for {table_name} (no data)")
+            log(f"  [{idx}/{len(data_dict)}] Skipping validation for {table_name} (no data)")
             continue
 
-        print(f"  [{idx}/{len(data_dict)}] Validating {table_name} ({len(rows)} rows)...", end='')
+        log(f"  [{idx}/{len(data_dict)}] Validating {table_name} ({len(rows)} rows)...", end='')
         try:
             validate_rows(client, table_name, rows)
-            print(f" ✓ passed")
+            log(f" ✓ passed")
         except Exception as e:
             validation_errors.append((table_name, str(e)))
-            print(f" ✗ FAILED")
+            log(f" ✗ FAILED")
 
     # If any validation failed, abort before inserting anything
     if validation_errors:
-        print("\n" + "="*80)
-        print("VALIDATION FAILED - No data was inserted")
-        print("="*80)
-        for table_name, error in validation_errors:
-            print(f"\n{table_name}:")
-            print(error)
+        error("\n" + "="*80)
+        error("VALIDATION FAILED - No data was inserted")
+        error("="*80)
+        for table_name, err_msg in validation_errors:
+            error(f"\n{table_name}:")
+            error(err_msg)
         raise RuntimeError(f"Validation failed for {len(validation_errors)} table(s). No data was inserted to maintain consistency.")
 
-    print(f"✓ All validations passed!\n")
+    log(f"✓ All validations passed!\n")
 
     # INSERTION PHASE: Now that all validations passed, perform the actual merges
-    print(f"Uploading data to BigQuery...")
+    log(f"Uploading data to BigQuery...")
     for idx, (table_name, rows) in enumerate(data_dict.items(), 1):
-        print(f"  [{idx}/{len(data_dict)}] Uploading {table_name}...", end='', flush=True)
+        log(f"  [{idx}/{len(data_dict)}] Uploading {table_name}...", end='', flush=True)
         merge_rows(client, table_name, rows)
-    print(f"  Upload completed!")
+    log(f"  Upload completed!")
 
 
 if __name__ == "__main__":
     # Test the BigQuery connection
     client = initialize_bigquery_client()
-    print(f"Connected to GCP project: {GCP_PROJECT_ID}")
-    print(f"Using dataset: {BIGQUERY_DATASET_ID}")
+    log(f"Connected to GCP project: {GCP_PROJECT_ID}")
+    log(f"Using dataset: {BIGQUERY_DATASET_ID}")

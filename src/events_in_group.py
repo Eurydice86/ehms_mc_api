@@ -5,6 +5,7 @@ import event
 import os
 
 from dotenv import load_dotenv
+from logger import error, log
 load_dotenv()
 
 def events_in_group(
@@ -51,16 +52,16 @@ def events_in_group(
         return events_list
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP error fetching events for group {group_id}: {e}")
+        error(f"HTTP error fetching events for group {group_id}: {e}")
         raise
     except requests.exceptions.Timeout:
-        print(f"Timeout fetching events for group {group_id}")
+        error(f"Timeout fetching events for group {group_id}")
         raise
     except requests.exceptions.RequestException as e:
-        print(f"Request error fetching events for group {group_id}: {e}")
+        error(f"Request error fetching events for group {group_id}: {e}")
         raise
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON response for events in group {group_id}: {e}")
+        error(f"Invalid JSON response for events in group {group_id}: {e}")
         raise
 
 
@@ -68,4 +69,4 @@ if __name__ == "__main__":
     lst = events_in_group("28112")
     for i in lst:
         ev, q = event.event(i)
-        print(json.dumps(ev, indent=2))
+        log(json.dumps(ev, indent=2))

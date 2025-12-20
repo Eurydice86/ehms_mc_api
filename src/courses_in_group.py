@@ -4,6 +4,7 @@ import datetime
 import course
 import os
 from dotenv import load_dotenv
+from logger import error, log
 load_dotenv()
 
 def courses_in_group(
@@ -50,16 +51,16 @@ def courses_in_group(
         return courses_list
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP error fetching courses for group {group_id}: {e}")
+        error(f"HTTP error fetching courses for group {group_id}: {e}")
         raise
     except requests.exceptions.Timeout:
-        print(f"Timeout fetching courses for group {group_id}")
+        error(f"Timeout fetching courses for group {group_id}")
         raise
     except requests.exceptions.RequestException as e:
-        print(f"Request error fetching courses for group {group_id}: {e}")
+        error(f"Request error fetching courses for group {group_id}: {e}")
         raise
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON response for courses in group {group_id}: {e}")
+        error(f"Invalid JSON response for courses in group {group_id}: {e}")
         raise
 
 
@@ -67,4 +68,4 @@ if __name__ == "__main__":
     lst = courses_in_group("28112")
     for i in lst:
         cs = course.course(i)
-        print(json.dumps(cs, indent=2))
+        log(json.dumps(cs, indent=2))

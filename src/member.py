@@ -3,6 +3,7 @@ import json
 import os
 from datetime import datetime
 from dotenv import load_dotenv
+from logger import error, log
 
 load_dotenv()
 
@@ -73,16 +74,16 @@ def member(member_id):
         return member_dict, memberships
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP error fetching member {member_id}: {e}")
+        error(f"HTTP error fetching member {member_id}: {e}")
         raise
     except requests.exceptions.Timeout:
-        print(f"Timeout fetching member {member_id}")
+        error(f"Timeout fetching member {member_id}")
         raise
     except requests.exceptions.RequestException as e:
-        print(f"Request error fetching member {member_id}: {e}")
+        error(f"Request error fetching member {member_id}: {e}")
         raise
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON response for member {member_id}: {e}")
+        error(f"Invalid JSON response for member {member_id}: {e}")
         raise
 
 
@@ -92,4 +93,4 @@ if __name__ == "__main__":
     ]
     for mem in members_list:
         m, memberships = member(mem)
-        print(json.dumps(m, indent=2))
+        log(json.dumps(m, indent=2))

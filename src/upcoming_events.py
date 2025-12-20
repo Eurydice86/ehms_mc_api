@@ -8,6 +8,7 @@ import json
 import os
 
 from dotenv import load_dotenv
+from logger import error, log
 
 load_dotenv()
 
@@ -31,7 +32,7 @@ def upcoming_events_in_non_EHMS_venue():
     # Calculate end date: first day of month, ~4 months ahead
     end = (start.replace(day=1) + datetime.timedelta(days=128)).replace(day=1)
 
-    print(f"Fetching events from {start} to {end}")
+    log(f"Fetching events from {start} to {end}")
 
     myclub_token = os.getenv("MC_TOKEN")
     if not myclub_token:
@@ -66,19 +67,19 @@ def upcoming_events_in_non_EHMS_venue():
         return events_list
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP error fetching upcoming events: {e}")
+        error(f"HTTP error fetching upcoming events: {e}")
         raise
     except requests.exceptions.Timeout:
-        print(f"Timeout fetching upcoming events")
+        error(f"Timeout fetching upcoming events")
         raise
     except requests.exceptions.RequestException as e:
-        print(f"Request error fetching upcoming events: {e}")
+        error(f"Request error fetching upcoming events: {e}")
         raise
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON response for upcoming events: {e}")
+        error(f"Invalid JSON response for upcoming events: {e}")
         raise
 
 
 if __name__ == "__main__":
     lst = upcoming_events_in_non_EHMS_venue()
-    print(lst)
+    log(lst)

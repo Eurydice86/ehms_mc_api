@@ -2,6 +2,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
+from logger import error
 
 load_dotenv()
 
@@ -51,16 +52,16 @@ def venues():
         return venues_list
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP error fetching venues: {e}")
+        error(f"HTTP error fetching venues: {e}")
         raise
     except requests.exceptions.Timeout:
-        print(f"Timeout fetching venues")
+        error(f"Timeout fetching venues")
         raise
     except requests.exceptions.RequestException as e:
-        print(f"Request error fetching venues: {e}")
+        error(f"Request error fetching venues: {e}")
         raise
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON response for venues: {e}")
+        error(f"Invalid JSON response for venues: {e}")
         raise
 
 

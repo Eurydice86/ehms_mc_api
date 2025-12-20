@@ -3,6 +3,7 @@ import json
 import os
 
 from dotenv import load_dotenv
+from logger import error, log
 
 load_dotenv()
 
@@ -61,20 +62,20 @@ def event(event_id):
         return (event_dict, participants_list)
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP error fetching event {event_id}: {e}")
+        error(f"HTTP error fetching event {event_id}: {e}")
         raise
     except requests.exceptions.Timeout:
-        print(f"Timeout fetching event {event_id}")
+        error(f"Timeout fetching event {event_id}")
         raise
     except requests.exceptions.RequestException as e:
-        print(f"Request error fetching event {event_id}: {e}")
+        error(f"Request error fetching event {event_id}: {e}")
         raise
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON response for event {event_id}: {e}")
+        error(f"Invalid JSON response for event {event_id}: {e}")
         raise
 
 
 if __name__ == "__main__":
     result = event("8177017")
 
-    print(json.dumps(result, indent=2))
+    log(json.dumps(result, indent=2))

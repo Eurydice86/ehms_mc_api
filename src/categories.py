@@ -2,6 +2,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
+from logger import error
 
 load_dotenv()
 
@@ -42,16 +43,16 @@ def categories():
         return categories_list
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP error fetching categories: {e}")
+        error(f"HTTP error fetching categories: {e}")
         raise
     except requests.exceptions.Timeout:
-        print(f"Timeout fetching categories")
+        error(f"Timeout fetching categories")
         raise
     except requests.exceptions.RequestException as e:
-        print(f"Request error fetching categories: {e}")
+        error(f"Request error fetching categories: {e}")
         raise
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON response for categories: {e}")
+        error(f"Invalid JSON response for categories: {e}")
         raise
 
 

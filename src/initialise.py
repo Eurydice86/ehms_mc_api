@@ -5,6 +5,7 @@ import get_all_presences
 import categories
 import groups
 import bigquery_upload
+from logger import log
 
 import os
 
@@ -70,7 +71,7 @@ def run(interval=60):
     }
 
     # Upload directly to BigQuery
-    print("Uploading to BigQuery")
+    log("Uploading to BigQuery")
     bigquery_upload.upload_all_tables(data_to_upload)
 
 
@@ -87,5 +88,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    print(f"Running with interval: {args.interval} days")
+    log(f"Running with interval: {args.interval} days")
     run(interval=args.interval)
