@@ -65,8 +65,8 @@ Create a `.env` file in the project root with the following variables:
 #### Required Variables
 
 - **`MC_TOKEN`** - Your MyClub API authentication token
-- **`GCP_PROJECT_ID`** - Your Google Cloud Project ID (e.g., `ehms-424721`)
-- **`BIGQUERY_DATASET_ID`** - BigQuery dataset name (e.g., `ehms_myclub`)
+- **`GCP_PROJECT_ID`** - Your Google Cloud Project ID
+- **`BIGQUERY_DATASET_ID`** - BigQuery dataset name
 
 #### Optional Variables
 
@@ -81,7 +81,7 @@ If `GOOGLE_CREDENTIALS_PATH` is not set, the application uses Google's default a
 
 ```env
 GCP_PROJECT_ID="your-gcp-project-id"
-BIGQUERY_DATASET_ID="ehms_myclub"
+BIGQUERY_DATASET_ID="your-dataset-id"
 ```
 
 Set up default credentials:
@@ -95,7 +95,7 @@ If you have a service account key file, set the path in your `.env`:
 
 ```env
 GCP_PROJECT_ID="your-gcp-project-id"
-BIGQUERY_DATASET_ID="ehms_myclub"
+BIGQUERY_DATASET_ID="your-dataset-id"
 GOOGLE_CREDENTIALS_PATH="/path/to/service-account-key.json"
 ```
 
@@ -109,15 +109,29 @@ To create a service account:
 
 ## Usage
 
-### Local Development
+### Running Locally (No Cloud Deployment Required)
 
-#### Run Once
+You can run this application entirely from your local machine without deploying to Google Cloud Functions. The script will fetch data from the MyClub API and upload it directly to BigQuery from your computer.
+
+#### Prerequisites for Local Execution
+
+1. **Environment variables configured** (see [Configuration](#configuration))
+2. **Google Cloud authentication set up** (see [Authentication Methods](#authentication-methods))
+3. **BigQuery dataset created** in your GCP project (the script will create tables automatically)
+
+#### Run the Pipeline
 
 To fetch and upload data for a 60-day interval:
 
 ```bash
 python src/initialise.py
 ```
+
+This will:
+- Connect to the MyClub API using your `MC_TOKEN`
+- Fetch member, event, course, and attendance data
+- Validate and upload data to BigQuery
+- Display progress bars and status updates (unless `SILENT_MODE` is enabled)
 
 #### Run with Custom Interval
 
@@ -136,7 +150,7 @@ initialise.run(interval=30)  # 30-day interval
 
 #### Enable Silent Mode
 
-For deployment or when you don't need verbose output:
+When you don't need verbose output:
 
 ```bash
 SILENT_MODE=true python src/initialise.py
@@ -154,7 +168,7 @@ gcloud functions deploy run_pipeline \
   --trigger-http \
   --allow-unauthenticated \
   --entry-point run_pipeline \
-  --set-env-vars MC_TOKEN=your-token,GCP_PROJECT_ID=your-project,BIGQUERY_DATASET_ID=ehms_myclub,SILENT_MODE=true
+  --set-env-vars MC_TOKEN=your-token,GCP_PROJECT_ID=your-project,BIGQUERY_DATASET_ID=your-dataset,SILENT_MODE=true
 ```
 
 #### Trigger via HTTP
@@ -178,10 +192,10 @@ gcloud scheduler jobs create http myclub-weekly-sync \
   --schedule="0 0 * * 1" \
   --uri="https://REGION-PROJECT_ID.cloudfunctions.net/run_pipeline" \
   --http-method=GET \
-  --time-zone="Europe/Helsinki"
+  --time-zone="Your/Timezone"
 ```
 
-This runs the pipeline every Monday at 00:00 (Helsinki time).
+This runs the pipeline every Monday at 00:00.
 
 ## Data Structure
 
