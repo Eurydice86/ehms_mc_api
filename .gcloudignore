@@ -1,0 +1,62 @@
+# This file specifies files that are *not* uploaded to Google Cloud
+# using gcloud. It follows the same syntax as .gitignore.
+
+.gcloudignore
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed at runtime)
+README.md
+DEPLOYMENT.md
+test.txt
+
+# Data files (not needed at runtime)
+data/
+*.db
+*.sqlite
+*.csv
+
+# Environment files (secrets should be in Secret Manager)
+.env
+.env.local
+.env.example
