@@ -366,10 +366,7 @@ def get_most_recent_date(client):
             max_date = row.max_date
             if max_date:
                 # Convert timestamp to ISO format string with milliseconds
-                iso_str = max_date.isoformat()
-                # Ensure format: "2021-01-01T00:00:00.000"
-                if '.' not in iso_str:
-                    iso_str += '.000'
+                iso_str = max_date.isoformat(timespec='milliseconds')
                 return iso_str
             else:
                 log("No events found in BigQuery")
